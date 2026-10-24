@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Freq</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Iowan Old Style", Palatino, Georgia, serif;
+      background: #f4f1ea;
+      color: #1c1915;
+    }
+    main {
+      max-width: 32rem;
+      margin: 0 auto;
+      padding: 1.5rem 1.25rem 3rem;
+    }
+    p.kicker {
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      font-size: 0.75rem;
+      margin: 0 0 0.4rem;
+    }
+    h1 { font-size: 3.2rem; line-height: 0.9; margin: 0 0 0.6rem; font-weight: 600; }
+    .disclaimer { font-size: 0.95rem; line-height: 1.4; margin: 0 0 1.2rem; }
+    label { display: block; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 0.8rem; margin-bottom: 0.35rem; }
+    input {
+      width: 100%;
+      font-size: 1.3rem;
+      padding: 0.75rem 0.8rem;
+      border: 1px solid #1c1915;
+      background: white;
+      border-radius: 0;
+    }
+    button, a.call {
+      display: block;
+      width: 100%;
+      text-align: center;
+      text-decoration: none;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      font-size: 1.15rem;
+      padding: 0.95rem 1rem;
+      margin-top: 0.8rem;
+      border: 0;
+      cursor: pointer;
+    }
+    button { background: #1c1915; color: #f4f1ea; }
+    a.call { background: #c4551a; color: white; }
+    .panel {
+      margin-top: 1.2rem;
+      padding-top: 1rem;
+      border-top: 1px solid #1c1915;
+    }
+    .code {
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      font-size: 3rem;
+      letter-spacing: 0.18em;
+      margin: 0.2rem 0;
+    }
+    .meta, .hint, .warn {
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      font-size: 0.92rem;
+      line-height: 1.4;
+    }
+    .warn { color: #8a2a12; }
+    a.quiet { color: inherit; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="kicker">San Diego demo</p>
+    <h1>Freq</h1>
+    <p class="disclaimer">Advisory only. Freq is not air traffic control and does not replace a visual observer. It only knows aircraft that broadcast ADS-B.</p>
+    <label for="phone">Your phone number</label>
+    <input id="phone" inputmode="tel" autocomplete="tel" placeholder="858 555 0100" />
+    <button id="start" type="button">Start flight</button>
+    <section class="panel" id="ready" hidden>
+      <p class="kicker" id="status">Freq on.</p>
+      <p class="meta">Your Freq code</p>
+      <p class="code" id="code">----</p>
+      <p class="meta" id="age">Waiting for a position…</p>
+      <p class="warn" id="bounds" hidden>Freq demo covers San Diego only.</p>
+      <a class="call" id="call" href="tel:+18583489143">Call +1 858-348-9143</a>
+      <p class="hint">Come back to this page after you dial. The fix captured before the call is your takeoff point, and the page keeps updating when it is in front.</p>
+    </section>
+    <p class="meta"><a class="quiet" href="/dash">Operator dashboard</a></p>
+  </main>
+  <script>
+    const phoneEl = document.querySelector("#phone");
+    const ready = document.querySelector("#ready");
+    const codeEl = document.querySelector("#code");
+    const ageEl = document.querySelector("#age");
+    const boundsEl = document.querySelector("#bounds");
+    const callEl = document.querySelector("#call");
+    let watchId = null;
+    let lastPost = 0;
+    let lastFixAt = null;
+    let wakeLock = null;
+
+    fetch("/api/state").then((r) => r.json()).then((data) => {
+      const display = data.phone_display || "+1 858-348-9143";
+      const digits = display.replace(/\D/g, "");
+      callEl.href = "tel:+" + digits;
+      callEl.textContent = "Call " + display;
+    }).catch(() => {});
+
+    document.querySelector("#start").addEventListener("click", async () => {
+      const phone = phoneEl.value.trim();
+      if (phone.replace(/\D/g, "").length < 10) {
+        ageEl.textContent = "Enter the phone you will call from.";
+        ready.hidden = false;
+        return;
+      }
+      ready.hidden = false;
+      document.querySelector("#status").textContent = "Freq on.";
+      await acquireLock();
+      const session = await fetch("/api/session", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({phone})
+      }).then((r) => r.json());
+      if (session.code) codeEl.textContent = session.code;
+      if (!navigator.geolocation) {
+        ageEl.textContent = "This browser has no location. The call can still use a dashboard spot.";
+        return;
+      }
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      watchId = navigator.geolocation.watchPosition(onFix, onFixError, {
+        enableHighAccuracy: true,
+        maximumAge: 2000,
+        timeout: 10000
+      });
+    });
+
+    async function onFix(pos) {
+      lastFixAt = Date.now();
+      const now = Date.now();
+      if (now - lastPost < 2000) return;
+      lastPost = now;
+      const body = {
+        phone: phoneEl.value.trim(),
+        lat: pos.coords.latitude,
+        lon: pos.coords.longitude,
+        accuracy: pos.coords.accuracy
+      };
+      try {
+        const data = await fetch("/api/loc", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(body)
+        }).then((r) => r.json());
+        if (data.code) codeEl.textContent = data.code;
+        boundsEl.hidden = data.in_bounds !== false;
+        renderAge(data.position_age_s, pos.coords.accuracy);
+      } catch (err) {
+        ageEl.textContent = "Position saved on this phone. The server did not take the last update.";
+      }
+    }
+
+    function onFixError() {
+      ageEl.textContent = "No fresh fix. Freq will use the last position it has, or a spot from the dashboard.";
+    }
+
+    function renderAge(serverAge, accuracy) {
+      const local = lastFixAt ? Math.round((Date.now() - lastFixAt) / 1000) : serverAge;
+      const acc = accuracy ? ` ±${Math.round(accuracy)} m` : "";
+      ageEl.textContent = `Position age ${local == null ? "unknown" : local + "s"}${acc}. Phone location, not the drone.`;
+    }
+
+    setInterval(() => {
+      if (!ready.hidden && lastFixAt) renderAge(null, null);
+    }, 1000);
+
+    async function acquireLock() {
+      try {
+        wakeLock = await navigator.wakeLock?.request("screen");
+      } catch (err) {}
+    }
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") acquireLock();
+    });
+  </script>
+</body>
+</html>
