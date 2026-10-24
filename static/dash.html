@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Freq dashboard</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: #14120f; color: #f3ecdf; font-family: ui-sans-serif, system-ui, sans-serif; }
+    header {
+      display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;
+      padding: 0.7rem 0.9rem; border-bottom: 1px solid #3a342c;
+    }
+    h1 { font-family: Georgia, serif; font-size: 1.5rem; margin: 0; font-weight: 600; }
+    .badge { border: 1px solid #3a342c; padding: 0.15rem 0.45rem; font-size: 0.75rem; letter-spacing: 0.04em; }
+    .badge.hot { background: #c4551a; color: white; border-color: #c4551a; }
+    .layout { display: grid; grid-template-columns: 1fr 22rem; height: calc(100% - 52px); }
+    #map { min-height: 50vh; background: #0e0d0b; }
+    aside { overflow: auto; border-left: 1px solid #3a342c; padding: 0.8rem; }
+    h2 { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; margin: 1rem 0 0.35rem; color: #c8bba6; }
+    p { margin: 0.2rem 0; line-height: 1.35; font-size: 0.92rem; }
+    select, button { width: 100%; background: #1d1a16; color: #f3ecdf; border: 1px solid #3a342c; padding: 0.55rem; font: inherit; }
+    button { margin-top: 0.45rem; cursor: pointer; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { padding: 0.35rem 0; border-bottom: 1px solid #2a261f; font-size: 0.85rem; }
+    .muted { color: #b3a794; }
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; height: auto; }
+      aside { border-left: 0; border-top: 1px solid #3a342c; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Freq</h1>
+    <span class="badge" id="source">NO POSITION</span>
+    <span class="badge" id="age">age —</span>
+    <span class="badge hot" id="replay" hidden>REPLAY</span>
+    <span class="badge" id="code">code —</span>
+  </header>
+  <div class="layout">
+    <div id="map"></div>
+    <aside>
+      <h2>Spot</h2>
+      <select id="spot"><option value="">Choose a named spot</option></select>
+      <button id="replay-btn" type="button">Start helicopter replay</button>
+      <h2>Ceiling</h2>
+      <p id="ceiling">Airspace not queried yet.</p>
+      <h2>Traffic</h2>
+      <ul id="traffic"></ul>
+      <h2>Event log</h2>
+      <ul id="events"></ul>
+      <p class="muted">Advisory only. Phone or simulated location stands in for the drone. Aircraft that do not broadcast ADS-B are invisible.</p>
+    </aside>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map("map", {zoomControl: true}).setView([32.82, -117.18], 11);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap",
+      maxZoom: 18
+    }).addTo(map);
+    const pilot = L.circleMarker([32.82, -117.18], {radius: 8, color: "#f3ecdf", weight: 2, fillColor: "#c4551a", fillOpacity: 1});
+    const aircraftLayer = L.layerGroup().addTo(map);
+    const airspaceLayer = L.layerGroup().addTo(map);
+    let layersLoaded = false;
+    let spotsLoaded = false;
+
+    const styles = {
+      facility: (feature) => {
+        const ceiling = Number(feature.properties.CEILING ?? feature.properties.ceiling ?? 400);
+        const color = ceiling <= 0 ? "#e23b2f" : ceiling < 200 ? "#e08a2c" : "#d6c15a";
+        return {color, weight: 0.4, fillColor: color, fillOpacity: 0.18};
+      },
+      class_airspace: {color: "#7eb6ff", weight: 1.2, fillOpacity: 0},
+      dod: {color: "#c4551a", weight: 1.4, fillColor: "#c4551a", fillOpacity: 0.2},
+      prohibited: {color: "#e23b2f", weight: 1.4, fillOpacity: 0.15},
+      sua: {color: "#e08a2c", weight: 1, fillOpacity: 0.08},
+      nd_tfr: {color: "#e23b2f", weight: 1.5, dashArray: "4 4", fillOpacity: 0.12},
+      stadiums: {color: "#f3ecdf", radius: 6, weight: 1}
+    };
+
+    async function loadLayers() {
+      const data = await fetch("/api/layers").then((r) => r.json());
+      if (!data.ready) return;
+      airspaceLayer.clearLayers();
+      const layers = data.layers || {};
+      for (const key of ["class_airspace", "facility", "sua", "dod", "prohibited", "nd_tfr"]) {
+        const collection = layers[key];
+        if (!collection || !collection.features || !collection.features.length) continue;
+        L.geoJSON(collection, {style: styles[key] || {color: "#888", weight: 1}}).addTo(airspaceLayer);
+      }
+      if (layers.stadiums && layers.stadiums.features) {
+        L.geoJSON(layers.stadiums, {
+          pointToLayer: (feature, latlng) => L.circleMarker(latlng, {radius: 5, color: "#f3ecdf", weight: 1, fillOpacity: 0.8})
+        }).addTo(airspaceLayer);
+      }
+      if (data.glider) {
+        L.geoJSON(data.glider, {style: {color: "#7dcea0", weight: 2, fillColor: "#7dcea0", fillOpacity: 0.15}}).addTo(airspaceLayer);
+      }
+      layersLoaded = true;
+    }
+
+    function fillSpots(spots) {
+      if (spotsLoaded) return;
+      const select = document.querySelector("#spot");
+      for (const spot of spots || []) {
+        const option = document.createElement("option");
+        option.value = spot.name;
+        option.textContent = spot.name;
+        select.appendChild(option);
+      }
+      spotsLoaded = true;
+    }
+
+    async function poll() {
+      const data = await fetch("/api/state").then((r) => r.json());
+      fillSpots(data.spots);
+      if (data.layers_ready && !layersLoaded) loadLayers().catch(() => {});
+      const session = data.session;
+      const traffic = document.querySelector("#traffic");
+      const events = document.querySelector("#events");
+      traffic.innerHTML = "";
+      events.innerHTML = "";
+      if (!session || session.lat == null) {
+        document.querySelector("#source").textContent = "NO POSITION";
+        document.querySelector("#ceiling").textContent = "Open /start or pick a spot.";
+        return;
+      }
+      const source = session.loc_source === "simulated" ? "SIMULATED" : "PHONE LOCATION";
+      document.querySelector("#source").textContent = source;
+      const age = session.position_age_s == null ? "—" : session.position_age_s + "s";
+      document.querySelector("#age").textContent = "age " + age;
+      document.querySelector("#code").textContent = session.code ? "code " + session.code : "code —";
+      document.querySelector("#replay").hidden = !session.replay;
+      pilot.setLatLng([session.lat, session.lon]).addTo(map);
+      const ceiling = session.ceiling;
+      document.querySelector("#ceiling").textContent = ceiling && ceiling.reason
+        ? ceiling.reason
+        : "Airspace not queried yet.";
+      aircraftLayer.clearLayers();
+      for (const ac of session.traffic || []) {
+        const color = ac.replay ? "#e23b2f" : ac.category === "A7" ? "#e08a2c" : "#7eb6ff";
+        const marker = L.circleMarker([ac.lat, ac.lon], {radius: 6, color, fillColor: color, fillOpacity: 0.9, weight: 1});
+        marker.bindTooltip(`${ac.phrase} ${Math.round(ac.spoken_alt_ft)} ft`);
+        marker.addTo(aircraftLayer);
+        L.polyline([[session.lat, session.lon], [ac.lat, ac.lon]], {color, weight: 1, opacity: 0.8}).addTo(aircraftLayer);
+      }
+      for (const ac of (session.traffic || []).slice(0, 6)) {
+        const li = document.createElement("li");
+        const miles = (ac.distance_nm * 1.15078).toFixed(1);
+        li.textContent = `${ac.phrase} ${miles} mi ${ac.bearing}, ${ac.spoken_alt_ft} ft${ac.closing ? ", closing" : ""}`;
+        traffic.appendChild(li);
+      }
+      if (!traffic.children.length) {
+        const li = document.createElement("li");
+        li.textContent = "No ADS-B traffic in the snapshot.";
+        traffic.appendChild(li);
+      }
+      for (const event of (session.events || []).slice().reverse()) {
+        const li = document.createElement("li");
+        const when = new Date(event.t * 1000).toLocaleTimeString();
+        li.textContent = `${when} ${event.kind}: ${event.text}`;
+        events.appendChild(li);
+      }
+    }
+
+    document.querySelector("#spot").addEventListener("change", async (event) => {
+      if (!event.target.value) return;
+      await fetch("/api/spot", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({name: event.target.value})
+      });
+      poll().catch(() => {});
+    });
+    document.querySelector("#replay-btn").addEventListener("click", async () => {
+      const response = await fetch("/api/replay/start", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: "{}"
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        document.querySelector("#ceiling").textContent = text;
+      }
+      poll().catch(() => {});
+    });
+    poll().catch(() => {});
+    setInterval(() => poll().catch(() => {}), 2000);
+  </script>
+</body>
+</html>
