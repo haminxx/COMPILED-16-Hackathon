@@ -1,0 +1,19 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"name": "Torrey Pines glider activity", "advisory": true},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-117.26, 32.884],
+          [-117.242, 32.884],
+          [-117.242, 32.897],
+          [-117.26, 32.897],
+          [-117.26, 32.884]
+        ]]
+      }
+    }
+  ]
+}

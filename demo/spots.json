@@ -1,0 +1,26 @@
+[
+  {"name": "La Jolla Cove", "lat": 32.8506, "lon": -117.273},
+  {"name": "La Jolla Shores", "lat": 32.858, "lon": -117.257},
+  {"name": "UCSD/Geisel", "lat": 32.8801, "lon": -117.234},
+  {"name": "Torrey Pines Gliderport", "lat": 32.8897, "lon": -117.2503},
+  {"name": "Mount Soledad", "lat": 32.8398, "lon": -117.2523},
+  {"name": "Mission Bay", "lat": 32.7701, "lon": -117.2264},
+  {"name": "near SAN", "lat": 32.7338, "lon": -117.1933},
+  {"name": "near Montgomery-Gibbs", "lat": 32.816, "lon": -117.16},
+  {"name": "near MCAS Miramar", "lat": 32.8684, "lon": -117.1425},
+  {"name": "near NAS North Island", "lat": 32.699, "lon": -117.215},
+  {
+    "name": "Torrey Pines State Reserve",
+    "lat": 32.921,
+    "lon": -117.253,
+    "note_radius_m": 700,
+    "note": "Land-manager advisory: Torrey Pines State Reserve does not allow drone takeoff. This is not an airspace restriction."
+  },
+  {
+    "name": "Cabrillo National Monument",
+    "lat": 32.6735,
+    "lon": -117.2423,
+    "note_radius_m": 700,
+    "note": "Land-manager advisory: Cabrillo National Monument does not allow drone takeoff. This is not an airspace restriction."
+  }
+]

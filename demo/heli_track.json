@@ -1,0 +1,15 @@
+[
+  {"t": 0, "north_nm": -4.2, "east_nm": 0.0, "alt_agl": 700, "gs": 162, "track": 0, "category": "A7", "flight": "N123HX"},
+  {"t": 5, "north_nm": -3.975, "east_nm": 0.0, "alt_agl": 700, "gs": 162, "track": 0, "category": "A7", "flight": "N123HX"},
+  {"t": 10, "north_nm": -3.75, "east_nm": 0.0, "alt_agl": 700, "gs": 162, "track": 0, "category": "A7", "flight": "N123HX"},
+  {"t": 15, "north_nm": -3.525, "east_nm": 0.0, "alt_agl": 700, "gs": 162, "track": 0, "category": "A7", "flight": "N123HX"},
+  {"t": 20, "north_nm": -3.3, "east_nm": 0.0, "alt_agl": 700, "gs": 162, "track": 0, "category": "A7", "flight": "N123HX"},
+  {"t": 25, "north_nm": -3.075, "east_nm": 0.0, "alt_agl": 700, "gs": 162, "track": 0, "category": "A7", "flight": "N123HX"},
+  {"t": 30, "north_nm": -2.85, "east_nm": 0.0, "alt_agl": 700, "gs": 162, "track": 0, "category": "A7", "flight": "N123HX"},
+  {"t": 35, "north_nm": -2.625, "east_nm": 0.0, "alt_agl": 700, "gs": 162, "track": 0, "category": "A7", "flight": "N123HX"},
+  {"t": 40, "north_nm": -2.4, "east_nm": 0.0, "alt_agl": 700, "gs": 162, "track": 0, "category": "A7", "flight": "N123HX"},
+  {"t": 45, "north_nm": -2.175, "east_nm": 0.0, "alt_agl": 700, "gs": 162, "track": 0, "category": "A7", "flight": "N123HX"},
+  {"t": 50, "north_nm": -1.95, "east_nm": 0.0, "alt_agl": 700, "gs": 162, "track": 0, "category": "A7", "flight": "N123HX"},
+  {"t": 55, "north_nm": -1.725, "east_nm": 0.0, "alt_agl": 700, "gs": 162, "track": 0, "category": "A7", "flight": "N123HX"},
+  {"t": 60, "north_nm": -1.5, "east_nm": 0.0, "alt_agl": 700, "gs": 162, "track": 0, "category": "A7", "flight": "N123HX"}
+]

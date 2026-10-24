@@ -1,0 +1,19 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"name": "Demo TFR", "demo": true},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-117.21, 32.76],
+          [-117.19, 32.76],
+          [-117.19, 32.78],
+          [-117.21, 32.78],
+          [-117.21, 32.76]
+        ]]
+      }
+    }
+  ]
+}
