@@ -109,6 +109,8 @@ async def post_loc(body: LocIn):
     session.loc_ts = time.time()
     session.loc_source = "phone"
     session.loc_pinned = False
+    session.ceiling = None
+    session.ceiling_anchor = None
     session.touch()
     if session.active:
         monitor.ensure(session)
@@ -125,6 +127,15 @@ async def state():
         "spots": ceiling.spots(),
         "session": None if session is None else _session_public(session, detail=True),
     }
+
+
+@app.get("/api/live")
+async def live(id: str = ""):
+    session = STORE.by_call.get(id)
+    if session is None:
+        return {"ok": True, "lines": []}
+    from .vapi_webhook import live_lines
+    return {"ok": True, "lines": live_lines(session)}
 
 
 @app.post("/api/spot")

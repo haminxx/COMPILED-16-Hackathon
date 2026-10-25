@@ -61,6 +61,8 @@ class Session:
     touched: float = field(default_factory=time.time)
     call_started: float | None = None
     last_all_clear: float | None = None
+    lines: list = field(default_factory=list)
+    partial: dict | None = None
     monitor: Any = None
 
     def touch(self) -> None:
@@ -122,14 +124,27 @@ class Store:
     def ensure_call(self, call: dict | None) -> Session:
         call = call or {}
         call_id = call.get("id")
-        if call_id and call_id in self.by_call:
-            session = self.by_call[call_id]
-            session.touch()
-            return session
         number = ((call.get("customer") or {}).get("number")) or ""
         key = normalize_phone(number)
-        if key and key in self.by_phone:
-            session = self.by_phone[key]
+        phone_session = self.by_phone.get(key) if key else None
+        if call_id and call_id in self.by_call:
+            session = self.by_call[call_id]
+            if (
+                phone_session is not None
+                and phone_session is not session
+                and phone_session.lat is not None
+                and session.lat is None
+            ):
+                if session.lines and not phone_session.lines:
+                    phone_session.lines = list(session.lines)
+                    phone_session.partial = session.partial
+                self.bind_call(phone_session, call_id, session.control_url)
+                session.active = False
+                session = phone_session
+            session.touch()
+            return session
+        if phone_session is not None:
+            session = phone_session
         else:
             session = Session(id=uuid.uuid4().hex[:12], phone=key, code="")
             self._add(session)
