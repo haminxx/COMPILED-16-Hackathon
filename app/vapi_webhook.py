@@ -46,7 +46,7 @@ def _on_status(message: dict) -> None:
         if session:
             replay.stop(session)
         return
-    if status not in {"in-progress", "ringing", "forwarding"}:
+    if status not in {"queued", "in-progress", "ringing", "forwarding"}:
         return
     session = STORE.ensure_call(call)
     control = ((call.get("monitor") or {}).get("controlUrl"))
@@ -115,19 +115,52 @@ def _link(session: Session, call: dict, code: str) -> str:
 
 
 def _apply_demo_location(session: Session) -> None:
-    if session.lat is not None or not config.DEMO_LOCATION:
-        return
-    parts = [part.strip() for part in config.DEMO_LOCATION.split(",")]
-    if len(parts) != 2:
+    if session.lat is None and config.DEMO_LOCATION:
+        parts = [part.strip() for part in config.DEMO_LOCATION.split(",")]
+        if len(parts) == 2:
+            try:
+                session.lat = float(parts[0])
+                session.lon = float(parts[1])
+            except ValueError:
+                pass
+            else:
+                session.loc_source = "simulated"
+                session.loc_ts = session.loc_ts or time.time()
+                session.log("location", "Using the pinned demo location")
+    if session.lat is None or session.lon is None:
+        _pin_la_jolla_cove(session)
+
+
+def _pin_la_jolla_cove(session: Session) -> None:
+    """Stand-in fix for a call that has no coordinates. Ceiling stays queried."""
+    spot = _spot_named("La Jolla Cove")
+    if spot is None:
+        log.warning("La Jolla Cove is missing from demo/spots.json")
         return
     try:
-        session.lat = float(parts[0])
-        session.lon = float(parts[1])
-    except ValueError:
+        session.lat = float(spot["lat"])
+        session.lon = float(spot["lon"])
+    except (KeyError, TypeError, ValueError):
         return
-    session.loc_source = "simulated"
-    session.loc_ts = session.loc_ts or time.time()
-    session.log("location", "Using the pinned demo location")
+    session.loc_source = config.LA_JOLLA_DEMO_SOURCE
+    session.loc_pinned = True
+    session.accuracy = None
+    session.loc_ts = time.time()
+    session.log("location", config.LA_JOLLA_DEMO_NOTE)
+
+
+def _spot_named(name: str) -> dict | None:
+    path = config.DEMO_DIR / "spots.json"
+    try:
+        spots = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(spots, list):
+        return None
+    for item in spots:
+        if isinstance(item, dict) and item.get("name") == name:
+            return item
+    return None
 
 
 def _extract_calls(message: dict) -> list[tuple[str, str, dict]]:

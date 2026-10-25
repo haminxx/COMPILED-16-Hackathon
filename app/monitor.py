@@ -82,15 +82,20 @@ async def _refresh_ceiling(session: Session) -> None:
     if session.lat is None or session.lon is None:
         return
     anchor = session.ceiling_anchor
-    if anchor is not None and session.ceiling is not None:
+    needs_note = session.loc_source == config.LA_JOLLA_DEMO_SOURCE
+    has_note = config.LA_JOLLA_DEMO_NOTE in ((session.ceiling or {}).get("reason") or "")
+    if anchor is not None and session.ceiling is not None and needs_note == has_note:
         moved_m = nm_to_meters(haversine_nm(anchor[0], anchor[1], session.lat, session.lon))
         if moved_m < config.MOVE_RECOMPUTE_M:
             return
     result = ceiling.ceiling_here(session.lat, session.lon)
-    session.ceiling = result.to_dict()
+    payload = result.to_dict()
+    if needs_note and config.LA_JOLLA_DEMO_NOTE not in payload["reason"]:
+        payload["reason"] = f"{payload['reason']} {config.LA_JOLLA_DEMO_NOTE}".strip()
+    session.ceiling = payload
     if result.queried:
         session.ceiling_anchor = (session.lat, session.lon)
-        session.log("ceiling", result.reason)
+        session.log("ceiling", payload["reason"])
 
 
 async def _maybe_all_clear(session: Session, aircraft: list[dict], now: float) -> None:
