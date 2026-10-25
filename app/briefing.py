@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 
+from . import config
 from .geo import speak_miles
 from .state import Session
 from .traffic import situation_traffic
@@ -27,10 +28,19 @@ def ceiling_text(session: Session) -> str:
             "If this call is not tied to that page, tell me your 4-digit Freq code."
         )
     if not session.ceiling:
-        return "Airspace is still loading."
+        return _with_demo_fix(session, "Airspace is still loading.")
     reason = session.ceiling.get("reason") or "Airspace is still loading."
     age = position_age_phrase(session)
-    return f"{reason} {age}".strip()
+    return _with_demo_fix(session, f"{reason} {age}".strip())
+
+
+def _with_demo_fix(session: Session, text: str) -> str:
+    if session.loc_source != config.LA_JOLLA_DEMO_SOURCE:
+        return text
+    note = config.LA_JOLLA_DEMO_NOTE
+    if note in text:
+        return text
+    return f"{text} {note}".strip()
 
 
 def weather_text(session: Session) -> str:

@@ -28,6 +28,10 @@ DEMO_MODE = _env("DEMO_MODE").lower()
 DEMO_LOCATION = _env("DEMO_LOCATION")
 DEMO_TFR = _flag("DEMO_TFR")
 OFFLINE = _flag("FREQ_OFFLINE")
+# Used only when a Vapi call arrives with no coordinates. The ceiling still
+# comes from the live engine; this sentence marks the stand-in fix.
+LA_JOLLA_DEMO_SOURCE = "la-jolla-cove"
+LA_JOLLA_DEMO_NOTE = "This demo fix is La Jolla Cove, not the pilot's GPS."
 
 USER_AGENT = "Freq/0.1 (hackathon)"
 ASSISTANT_NAME = "Freq"
