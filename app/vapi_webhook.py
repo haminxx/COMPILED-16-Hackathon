@@ -29,6 +29,12 @@ async def handle(payload: dict) -> dict:
         return {"ok": True}
     if kind == "tool-calls":
         return {"results": _on_tools(message)}
+    if kind == "transcript":
+        _on_transcript(message)
+        return {"ok": True}
+    if kind == "conversation-update":
+        _on_conversation(message)
+        return {"ok": True}
     if kind in {"end-of-call-report", "end-of-call"}:
         call = message.get("call") or {}
         session = STORE.end_call(call)
@@ -36,6 +42,67 @@ async def handle(payload: dict) -> dict:
             replay.stop(session)
         return {"ok": True}
     return {"ok": True}
+
+
+def live_lines(session: Session) -> list[dict]:
+    lines = [dict(item) for item in session.lines]
+    partial = session.partial
+    if isinstance(partial, dict) and str(partial.get("text") or "").strip():
+        lines.append({"role": partial.get("role") or "caller", "text": str(partial["text"]).strip(), "partial": True})
+    return lines
+
+
+def _role(value: str | None) -> str | None:
+    role = (value or "").lower()
+    if role in {"assistant", "bot", "agent"}:
+        return "agent"
+    if role in {"user", "caller", "customer"}:
+        return "caller"
+    return None
+
+
+def _on_transcript(message: dict) -> None:
+    call = message.get("call") or {}
+    session = STORE.ensure_call(call)
+    role = _role(str(message.get("role") or ""))
+    text = str(message.get("transcript") or message.get("text") or "").strip()
+    if role is None or not text:
+        return
+    kind = str(message.get("transcriptType") or message.get("type") or "").lower()
+    partial = "partial" in kind and "final" not in kind
+    if partial:
+        session.partial = {"role": role, "text": text}
+    else:
+        if session.partial and session.partial.get("role") == role:
+            session.partial = None
+        if not session.lines or session.lines[-1].get("text") != text or session.lines[-1].get("role") != role:
+            session.lines.append({"role": role, "text": text})
+            del session.lines[:-80]
+    session.touch()
+
+
+def _on_conversation(message: dict) -> None:
+    call = message.get("call") or {}
+    session = STORE.ensure_call(call)
+    raw = message.get("conversation") or message.get("messages") or []
+    if not isinstance(raw, list):
+        return
+    lines = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        role = _role(str(item.get("role") or ""))
+        text = str(item.get("content") or item.get("message") or item.get("transcript") or "").strip()
+        if role is None or not text:
+            continue
+        if lines and lines[-1]["role"] == role and lines[-1]["text"] == text:
+            continue
+        lines.append({"role": role, "text": text})
+    session.lines = lines[-80:]
+    partial = session.partial
+    if isinstance(partial, dict) and lines and lines[-1]["role"] == partial.get("role") and lines[-1]["text"] == partial.get("text"):
+        session.partial = None
+    session.touch()
 
 
 def _on_status(message: dict) -> None:
