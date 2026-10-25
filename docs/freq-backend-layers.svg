@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="720" viewBox="0 0 1400 720">
+  <rect width="1400" height="720" fill="#f7f6f3"/>
+  <text x="700" y="78" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="40" font-weight="700" fill="#121417">Freq backend layers</text>
+  <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="20" fill="#121417">
+    <rect x="40" y="220" width="200" height="160" rx="16" fill="#fff" stroke="#121417" stroke-width="3"/>
+    <text x="140" y="295" text-anchor="middle" font-weight="650">1 Phone GPS</text>
+    <text x="140" y="325" text-anchor="middle">and call</text>
+    <rect x="300" y="220" width="200" height="160" rx="16" fill="#fff" stroke="#121417" stroke-width="3"/>
+    <text x="400" y="295" text-anchor="middle" font-weight="650">2 Vapi voice</text>
+    <text x="400" y="325" text-anchor="middle">phone agent</text>
+    <rect x="560" y="200" width="220" height="200" rx="16" fill="#0040FF"/>
+    <text x="670" y="285" text-anchor="middle" fill="#fff" font-weight="700">3 FastAPI</text>
+    <text x="670" y="320" text-anchor="middle" fill="#fff" font-weight="700">backend</text>
+    <rect x="850" y="140" width="280" height="420" rx="16" fill="#fff" stroke="#121417" stroke-width="3"/>
+    <text x="990" y="185" text-anchor="middle" font-weight="700">4 Official live data</text>
+    <rect x="875" y="210" width="230" height="64" rx="10" fill="#fff" stroke="#0040FF" stroke-width="2"/>
+    <text x="990" y="248" text-anchor="middle">FAA facility map ceiling</text>
+    <rect x="875" y="290" width="230" height="64" rx="10" fill="#fff" stroke="#0040FF" stroke-width="2"/>
+    <text x="990" y="328" text-anchor="middle">Class airspace</text>
+    <rect x="875" y="370" width="230" height="64" rx="10" fill="#fff" stroke="#0040FF" stroke-width="2"/>
+    <text x="990" y="408" text-anchor="middle">Special use and TFR</text>
+    <rect x="875" y="450" width="230" height="64" rx="10" fill="#fff" stroke="#0040FF" stroke-width="2"/>
+    <text x="990" y="488" text-anchor="middle">ADS-B aircraft</text>
+    <rect x="1180" y="220" width="180" height="160" rx="16" fill="#fff" stroke="#121417" stroke-width="3"/>
+    <text x="1270" y="290" text-anchor="middle" font-weight="650">5 Spoken</text>
+    <text x="1270" y="320" text-anchor="middle">aircraft advice</text>
+  </g>
+  <g stroke="#0040FF" stroke-width="6" fill="none" stroke-linecap="round">
+    <path d="M240 300 H300"/><path d="M500 300 H560"/><path d="M780 300 H850"/><path d="M1130 300 H1180"/>
+  </g>
+  <text x="700" y="640" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#5c6570">San Diego. Polygons cached in memory. Traffic checked every few seconds.</text>
+</svg>
